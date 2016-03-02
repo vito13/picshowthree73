@@ -11,16 +11,17 @@ init();
 animate();
 function init() {
     scene = new THREE.Scene();
+
     // editor渲染器
     renderer = new THREE.WebGLRenderer( { antialias: true } );
     renderer.setClearColor( 0xf0f0f0 );
-    renderer.setSize( viewSize.mainWidth, viewSize.mainHeigth );
+    renderer.setSize( editorData.viewSize.mainWidth, editorData.viewSize.mainHeigth );
     renderer.shadowMap.enabled = true;
 
     // 预览渲染器
     rendererCam = new THREE.WebGLRenderer( { antialias: true } );
     rendererCam.setClearColor( 0xf0f0f0 );
-    rendererCam.setSize( viewSize.camWidth, viewSize.camHeigth);
+    rendererCam.setSize( editorData.viewSize.camWidth, editorData.viewSize.camHeigth);
     rendererCam.shadowMap.enabled = true;
 
     // edit div
@@ -31,7 +32,7 @@ function init() {
     containerCam.appendChild( rendererCam.domElement );
 
     // 主摄像机
-    camera = new THREE.PerspectiveCamera( 70, viewSize.mainWidth / viewSize.mainHeigth, 1, 10000 );
+    camera = new THREE.PerspectiveCamera( 70, editorData.viewSize.mainWidth / editorData.viewSize.mainHeigth, 1, 10000 );
     camera.position.z = 1000;
     scene.add( camera );
 
@@ -76,6 +77,17 @@ function init() {
     stats.domElement.style.top = '0px';
     containerMain.appendChild( stats.domElement );
 
+
+    var plane = new THREE.PlaneGeometry( 1500, 1000, 2, 2 );
+    var texture = new THREE.TextureLoader().load("pic/004.jpg");
+    var material = new THREE.MeshPhongMaterial( { color: 0xffffff, map: texture } );
+    var mesh = new THREE.Mesh( plane,material);
+    mesh.position.z = -500;
+    mesh.position.y = 300;
+    scene.add(mesh);
+
+    editorData.resetData(scene);
+
     // 变换控制器,用于操控轨迹点的回调处理
     transformControl = new THREE.TransformControls( camera, renderer.domElement );
     transformControl.addEventListener( 'change', render );
@@ -89,7 +101,7 @@ function init() {
         delayHideTransform();
     } );
     transformControl.addEventListener( 'objectChange', function( e ) {
-        updateSplineOutline();
+        editorData.updateSplineOutline();
     } );
     scene.add( transformControl );
     window.addEventListener( 'keydown', function ( event ) {
@@ -131,7 +143,7 @@ function init() {
 
 
     // 貌似是用于拖拽轨迹点
-    var dragcontrols = new THREE.DragControls( camera, splineHelperObjects, renderer.domElement ); //
+    var dragcontrols = new THREE.DragControls( camera, editorData.controlPointArr, renderer.domElement ); //
     dragcontrols.on( 'hoveron', function( e ) {
         transformControl.attach( e.object );
         cancelHideTransorm(); // *
@@ -164,6 +176,8 @@ function init() {
     function cancelHideTransorm() {
         if ( hiding ) clearTimeout( hiding );
     }
+
+
 }
 
 function animate(){
