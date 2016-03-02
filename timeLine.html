@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+
+    <style type="text/css">
+        body, html {
+            font-family: arial, sans-serif;
+            font-size: 11pt;
+        }
+
+        #visualization {
+            box-sizing: border-box;
+            width: 100%;
+            height: 300px;
+        }
+    </style>
+    <!-- note: moment.js must be loaded before vis.js, else vis.js uses its embedded version of moment.js -->
+    <script src="dist/moment.min.js"></script>
+    <script src="dist/vis.js"></script>
+    <link href="dist/vis.css" rel="stylesheet" type="text/css" />
+    <script src="dist/googleAnalytics.js"></script>
+    <script src="http://t4t5.github.io/sweetalert/dist/sweetalert.min.js"></script>
+    <link href="http://t4t5.github.io/sweetalert/dist/sweetalert.css" rel="stylesheet" type="text/css"/>
+
+</head>
+<body>
+
+<p>
+    <input type="button" id="b1" value="定位到第一个"><br>
+    <input type="button" id="b2" value="包含所有"><br>
+</p>
+
+<div id="visualization"></div>
+<script src="timeLine.js"></script>
+</body>
+</html>
