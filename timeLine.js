@@ -86,7 +86,6 @@ timeline.on('select', function (properties) {
     }
 });
 
-
 //items.on('*', function (event, properties) {
 //    logEvent(event, properties);
 //});

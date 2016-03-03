@@ -19,13 +19,18 @@ var editorData = {
     curvePoints: null,
     curve: null,
     selTargetMesh: null,
+    timebar: null, // 时间轴上的时间线
+    timebarid: "timebar",
 
     addDefaultNode: function(){
+        var now = Date.now();
+        var step = 2000;
+        // 4个关键帧, 每个间隔2秒
         var items = new vis.DataSet();
         for (var m=0; m<4; ++m){
             var item = {
                 id: m,
-                start: Date.now()
+                start: now + m * step
             };
             this.addNode(item);
             items.add(item);
@@ -58,6 +63,18 @@ var editorData = {
         editor.scene.add(this.curve.mesh);
         this.addDefaultNode();
         this.updateSplineOutline();
+
+
+        timeline.addCustomTime(this.nodeArr[0].start, this.timebarid);
+        timeline.on('timechange', function (properties) {
+            document.getElementById('timechangeBar').innerHTML = properties.id;
+            document.getElementById('timechangeEvent').innerHTML = properties.time;
+            editorData.interpolation();
+        });
+        timeline.on('timechanged', function (properties) {
+            document.getElementById('timechangedBar').innerHTML = properties.id;
+            document.getElementById('timechangedEvent').innerHTML = properties.time;
+        });
     },
     // 添加节点
     addNode: function (item, callback) {
@@ -183,10 +200,63 @@ var editorData = {
             var p;
             for ( var i = 0; i < this.ARC_SEGMENTS; i ++ ) {
                 p = this.curve.mesh.geometry.vertices[ i ];
+                // 根据关键点取curve在百分比下的插值结果重新赋值
                 p.copy( this.curve.getPoint( i /  ( this.ARC_SEGMENTS - 1 ) ) );
+                //console.log(i /  ( this.ARC_SEGMENTS - 1 ) );
+                //console.log(p);
             }
             this.curve.mesh.geometry.verticesNeedUpdate = true;
         }
+    },
+
+    // help fun
+    printNodeData: function(){
+        console.log("===================");
+        for(var m=0; m<this.nodeArr.length; ++m){
+            var s = "(" + m + ") index: " + this.nodeArr[m].index + ", id: " + this.nodeArr[m].id + ", start: " + this.nodeArr[m].start;
+            console.log(s);
+            var d = Date.parse(this.nodeArr[m].start);
+            console.log(d);
+        }
+    },
+
+    // 选中时间轴上的最左一个
+    fouceFirst: function(){
+        timeline.setSelection(this.nodeArr[0].id);
+        editorData.setSelect(this.nodeArr[0].id);
+        timeline.fit();
+        timeline.setCustomTime(this.nodeArr[0].start, this.timebarid);
+    },
+    // 选中时间轴上的最右一个
+    fouceLast: function(){
+        timeline.setSelection(this.nodeArr[this.nodeArr.length - 1].id);
+        editorData.setSelect(this.nodeArr[this.nodeArr.length - 1].id);
+        timeline.fit();
+        timeline.setCustomTime(this.nodeArr[this.nodeArr.length - 1].start, this.timebarid);
+    },
+    play: function(){
+
+    },
+
+    interpolation: function(){
+        var date = timeline.getCustomTime(this.timebarid);
+        if(date < this.nodeArr[0].start || date == this.nodeArr[0].start){
+            this.setSelect(this.nodeArr[0].id);
+        } else if(date > this.nodeArr[this.nodeArr.length - 1].start || date == this.nodeArr[this.nodeArr.length - 1].start){
+            this.setSelect(this.nodeArr[this.nodeArr.length - 1].id);
+        } else {
+            // 取在时间轴上的比例
+            var timelong = this.nodeArr[this.nodeArr.length - 1].start - this.nodeArr[0].start;
+            var timenow = date - this.nodeArr[0].start;
+            var d = timenow / timelong;
+            var pt = this.curve.getPoint(d);
+            this.selTargetMesh.position.copy(pt);
+            editor.updateViewCameraPosition(pt);
+        }
+
+
+        // 更新cam位置
+        // 更新cam角度
     }
 };
 
