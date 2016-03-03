@@ -5,42 +5,34 @@
     <title>mainView</title>
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <style type="text/css">
-        #content{
-            background:#CCCCCC;
-            height:200px;
-            margin:0;
+        #mainview{
+            width: 512px;
+            height: 384px;
+            background: blue;
+            float: left;
         }
         #camera{
-            width: 300px;
-            height: 100%;
-            background-color:#0033CC;
-            margin:0;
-            float:left;
+            width: 128px;
+            height: 96px;
+            background: red;
+            float: left;
         }
-        #visualization {
-            box-sizing: border-box;
-            width: 290px;
-            height: 100%;
-            background:gainsboro;
-            margin:0;
-            float:left;
-        }
-
-        #visualizationout {
-            box-sizing: border-box;
+        #timeline{
             width: 100%;
-            height: 300px;
+            background: #fdfdfe;
+            float: left;
+            clear: left;
         }
     </style>
 </head>
 <body>
 
-<div id="webgl" width="600" height="400"></div>
-<div id="visualizationout"></div>
-<div id="content">
-    <div id="camera"></div>
-    <!--<div id="visualization"></div>-->
-</div>
+<div id="mainview"></div>
+<input type="button" onClick="" value="Button1"/>
+<input type="button" onClick="" value="Button1"/>
+<input type="button" onClick="" value="Button1"/>
+<div id="camera"></div>
+<div id="timeline"></div>
 
 <script src="js/three.js"></script>
 <script src="js/libs/stats.min.js"></script>

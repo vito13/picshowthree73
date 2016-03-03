@@ -1,5 +1,5 @@
 
-var container = document.getElementById('visualizationout');
+var container = document.getElementById('timeline');
 var options = {
     editable: true,
     type: 'point',
@@ -80,9 +80,9 @@ timeline.setOptions(options);
 
 timeline.on('select', function (properties) {
 
-    console.log('select', properties);
+    //console.log('select', properties);
     if(properties.items.length){
-        editorData.setSelectStyle(properties.items[0])
+        editorData.setSelect(properties.items[0])
     }
 });
 

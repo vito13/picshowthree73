@@ -7,10 +7,10 @@ var editorData = {
     templateCube: null,
     templateLine: null,
     viewSize: {
-        mainWidth: 600,
-        mainHeigth: 400,
-        camWidth: 300,
-        camHeigth: 200
+        mainWidth: 512,
+        mainHeigth: 384,
+        camWidth: 128,
+        camHeigth: 96
     },
     ARC_SEGMENTS: 200,
     NODEINDEX: 0,
@@ -18,7 +18,6 @@ var editorData = {
     controlPointArr: null,
     curvePoints: null,
     curve: null,
-    scene: null,
     selTargetMesh: null,
 
     addDefaultNode: function(){
@@ -34,8 +33,7 @@ var editorData = {
         timeline.setItems(items);
     },
 
-    resetData: function (scene){
-        this.scene = scene;
+    resetData: function (){
         this.templateCube = new THREE.BoxGeometry(20, 20, 20);
         this.templateLine = new THREE.Geometry();
         for ( var i = 0; i < this.ARC_SEGMENTS; i ++ ) {
@@ -47,7 +45,7 @@ var editorData = {
         this.controlPointArr = new Array();
         this.selTargetMesh = new THREE.Mesh(new THREE.BoxGeometry(50, 50, 50),
             new THREE.MeshLambertMaterial({color: 0x7777ff, wireframe: true}));
-        this.scene.add(this.selTargetMesh);
+        editor.scene.add(this.selTargetMesh);
 
 
         this.curve = new THREE.CatmullRomCurve3(this.curvePoints);
@@ -57,7 +55,7 @@ var editorData = {
             linewidth: 2
         } ) );
         this.curve.mesh.castShadow = true;
-        this.scene.add(this.curve.mesh);
+        editor.scene.add(this.curve.mesh);
         this.addDefaultNode();
         this.updateSplineOutline();
     },
@@ -83,24 +81,24 @@ var editorData = {
         object.start = item.start;
         object.mesh = mesh;
         this.nodeArr.push(object);
-        this.scene.add(mesh);
+        editor.scene.add(mesh);
         this.controlPointArr.push(mesh);
 
         this.curvePoints.push(mesh.position);
         this.resort();
-        //this.updateSplineOutline();
         if(callback){
             callback(item);
         }
         return object;
     },
 
-    setSelectStyle: function(id){
+    setSelect: function(id){
         var node = this.getNode(id);
         if(node){
-            this.selTargetMesh.position.x = node.value.mesh.position.x;
-            this.selTargetMesh.position.y = node.value.mesh.position.y;
-            this.selTargetMesh.position.z = node.value.mesh.position.z;
+            this.selTargetMesh.position.copy(node.value.mesh.position);
+            this.selTargetMesh.rotation.copy(node.value.mesh.rotation);
+            editor.updateViewCameraPosition(node.value.mesh.position);
+            editor.updateViewCameraRotation(node.value.mesh.rotation);
         }
     },
 
@@ -119,9 +117,9 @@ var editorData = {
             if (node) {
                 if(this.removeCurvePoint(node.value.mesh.position)){
                     this.updateSplineOutline();
-                    var mesh = this.scene.getChildByName(node.value.index);
+                    var mesh = editor.scene.getChildByName(node.value.index);
                     if(mesh){
-                        this.scene.remove(mesh);
+                        editor.scene.remove(mesh);
                         this.nodeArr.splice(node.index, 1);
                         callback(item);
                     }
