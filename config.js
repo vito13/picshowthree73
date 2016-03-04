@@ -35,6 +35,7 @@ var editorData = {
             this.addNode(item);
             items.add(item);
         }
+        this.nodeArr[1].mesh.rotation.x = -0.5 * Math.PI;
         timeline.setItems(items);
     },
 
@@ -88,6 +89,7 @@ var editorData = {
         mesh.position.x = Math.random() * 1000 - 500;
         mesh.position.y = Math.random() * 600;
         mesh.position.z = Math.random() * 800 - 400;
+
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         mesh.name = item.content;
@@ -112,8 +114,7 @@ var editorData = {
     setSelect: function(id){
         var node = this.getNode(id);
         if(node){
-            this.selTargetMesh.position.copy(node.value.mesh.position);
-            this.selTargetMesh.rotation.copy(node.value.mesh.rotation);
+            this.updateTargetMesh(node.value.mesh.position, node.value.mesh.rotation);
             editor.updateViewCameraPosition(node.value.mesh.position);
             editor.updateViewCameraRotation(node.value.mesh.rotation);
         }
@@ -202,8 +203,6 @@ var editorData = {
                 p = this.curve.mesh.geometry.vertices[ i ];
                 // 根据关键点取curve在百分比下的插值结果重新赋值
                 p.copy( this.curve.getPoint( i /  ( this.ARC_SEGMENTS - 1 ) ) );
-                //console.log(i /  ( this.ARC_SEGMENTS - 1 ) );
-                //console.log(p);
             }
             this.curve.mesh.geometry.verticesNeedUpdate = true;
         }
@@ -238,25 +237,77 @@ var editorData = {
 
     },
 
+    // 根据时间取得关键点
+    getKeyPoint: function(date){
+        var r = new Array();
+        if(date < this.nodeArr[0].start || date > this.nodeArr[this.nodeArr.length-1].start){
+            return r;
+        }
+        for(var m=0; m<this.nodeArr.length-1; ++m){
+            if(this.nodeArr[m].start == date){
+                r.push(this.nodeArr[m]);
+                break;
+            } else if(date > this.nodeArr[m].start && date < this.nodeArr[m+1].start){
+                r.push(this.nodeArr[m], this.nodeArr[m+1]);
+                break;
+            }
+        }
+        return r;
+    },
+
+    // 更新预览摄像机空间位置与角度
+    updateTargetMesh: function(pos, rot){
+        this.selTargetMesh.position.copy(pos);
+        if(rot){
+            if(this.selTargetMesh.rotation) {
+                this.selTargetMesh.rotation.copy(rot);
+            }
+        }
+    },
+
     interpolation: function(){
         var date = timeline.getCustomTime(this.timebarid);
-        if(date < this.nodeArr[0].start || date == this.nodeArr[0].start){
+
+        if(date < this.nodeArr[0].start || // 小于min
+            date == this.nodeArr[0].start){
             this.setSelect(this.nodeArr[0].id);
-        } else if(date > this.nodeArr[this.nodeArr.length - 1].start || date == this.nodeArr[this.nodeArr.length - 1].start){
+        } else if(date > this.nodeArr[this.nodeArr.length - 1].start || // 大于max
+            date == this.nodeArr[this.nodeArr.length - 1].start){
             this.setSelect(this.nodeArr[this.nodeArr.length - 1].id);
-        } else {
+        } else { // 在range之内
             // 取在时间轴上的比例
             var timelong = this.nodeArr[this.nodeArr.length - 1].start - this.nodeArr[0].start;
             var timenow = date - this.nodeArr[0].start;
             var d = timenow / timelong;
+            // 位置
             var pt = this.curve.getPoint(d);
-            this.selTargetMesh.position.copy(pt);
+            // 角度
+            var rot = new THREE.Euler();
+            var arr = this.getKeyPoint(date);
+            if(arr.length == 1){ // 落在关键点上
+                rot.copy(arr[0].mesh.rotation);
+            } else if (arr.length == 2) { // 在两个关键点之间
+                var timelong = arr[1].start - arr[0].start;
+                var timenow = date - arr[0].start;
+                var d = timenow / timelong;
+
+                var rotlongx = arr[1].mesh.rotation.x - arr[0].mesh.rotation.x;
+                var rotlongy = arr[1].mesh.rotation.y - arr[0].mesh.rotation.y;
+                var rotlongz = arr[1].mesh.rotation.z - arr[0].mesh.rotation.z;
+
+                rot.set(arr[0].mesh.rotation.x + rotlongx * d,
+                        arr[0].mesh.rotation.y + rotlongy * d,
+                        arr[0].mesh.rotation.z + rotlongz * d,
+                        "XYZ"
+                );
+            } else { // 小于min或大于max
+                // 暂时什么多不做
+            }
+
             editor.updateViewCameraPosition(pt);
+            editor.updateViewCameraRotation(rot);
+            this.updateTargetMesh(pt, rot);
         }
-
-
-        // 更新cam位置
-        // 更新cam角度
     }
 };
 

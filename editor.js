@@ -192,6 +192,7 @@ var editor = {
         }
         if(this.viewRenderer) {
             this.viewRenderer.render(this.scene, this.viewCamera);
+            //console.log(this.viewCamera.rotation);
         }
     },
     updateViewCameraPosition: function(position){
