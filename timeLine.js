@@ -85,7 +85,19 @@ timeline.on('select', function (properties) {
         editorData.setSelect(properties.items[0])
     }
 });
-
+timeline.on('timechange', function (properties) {
+    //document.getElementById('timechangeBar').innerHTML = properties.id;
+    //document.getElementById('timechangeEvent').innerHTML = properties.time;
+    editorData.interpolation();
+});
+timeline.on('timechanged', function (properties) {
+    //document.getElementById('timechangedBar').innerHTML = properties.id;
+    //document.getElementById('timechangedEvent').innerHTML = properties.time;
+});
+container.onclick = function (event) {
+    //var props = timeline.getEventProperties(event);
+    //editorData.setCustomTime(props.time);
+};
 //items.on('*', function (event, properties) {
 //    logEvent(event, properties);
 //});

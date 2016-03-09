@@ -107,6 +107,7 @@ var editor = {
             delayHideTransform();
         } );
         transformControl.addEventListener( 'objectChange', function( e ) {
+            editorData.updateTargetMesh(e.target.object.position, e.target.object.rotation);
             editorData.updateSplineOutline();
             editor.updateViewCameraPosition(e.target.object.position);
             editor.updateViewCameraRotation(e.target.object.rotation);
