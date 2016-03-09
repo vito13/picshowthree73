@@ -302,40 +302,48 @@ var editorData = {
         return ms;
     },
     play2Right: function(){
-        var date = this.getCustomTime();
-        var pair = this.getKeyPoint(date);
-        if(pair.right){
-            this.stop();
-
-            var value = {t: date};
-            var target = {t: pair.right.start};
-            this.cameraTween = new TWEEN.Tween(value).to(target, Math.abs(target.t - value.t));
-            this.cameraTween.onUpdate(function(){
-                editorData.setCustomTime(value.t);
-            });
-            this.cameraTween.delay(0);
-            this.cameraTween.onComplete(function(){
-                editorData.play2Right();
-            });
-            this.cameraTween.start();
-        }
+        var p2r = function p2r(host){
+            var date = host.getCustomTime();
+            var pair = host.getKeyPoint(date);
+            if(pair.right){
+                this.stop();
+                var value = {t: date};
+                var target = {t: pair.right.start};
+                var timelong = Math.abs(date - pair.right.start);
+                host.cameraTween = new TWEEN.Tween(value).to(target, timelong);
+                host.cameraTween.onUpdate(function(){
+                    editorData.setCustomTime(value.t);
+                });
+                host.cameraTween.delay(0);
+                host.cameraTween.onComplete(function(){
+                    p2r(host);
+                });
+                host.cameraTween.start();
+            }
+        };
+        p2r(this);
     },
     play2Left: function(){
-        var date = this.getCustomTime();
-        var canPlay = date > this.nodeArr[0].start;
-        if(canPlay){
-            this.stop();
-            var value = {t: Date.parse(date)};
-            var target = {t: this.nodeArr[0].start - this.playEndTimeLong};
-            this.cameraTween = new TWEEN.Tween(value).to(target, Math.abs(target.t - value.t));
-            this.cameraTween.onUpdate(function(){
-                editorData.setCustomTime(value.t);
-            });
-            this.cameraTween.delay(0);
-            this.cameraTween.onComplete(function(){
-            });
-            this.cameraTween.start();
-        }
+        var p2l = function p2l(host){
+            var date = host.getCustomTime();
+            var pair = host.getKeyPoint(date);
+            if(pair.left){
+                this.stop();
+                var value = {t: date};
+                var target = {t: pair.left.start};
+                var timelong = Math.abs(date - pair.left.start);
+                host.cameraTween = new TWEEN.Tween(value).to(target, timelong);
+                host.cameraTween.onUpdate(function(){
+                    editorData.setCustomTime(value.t);
+                });
+                host.cameraTween.delay(0);
+                host.cameraTween.onComplete(function(){
+                    p2l(host);
+                });
+                host.cameraTween.start();
+            }
+        };
+        p2l(this);
     },
     stop: function(){
         if(this.cameraTween){
@@ -347,18 +355,26 @@ var editorData = {
     // 根据时间取得关键点
     getKeyPoint: function(date){
         var pair = {};
-        if(date < this.nodeArr[0].start){
+        if(date < this.nodeArr[0].start) { // <mix
             pair.left = null;
             pair.right = this.nodeArr[0];
-        } else if(date > this.nodeArr[this.nodeArr.length-1].start){
+        } else if(date > this.nodeArr[this.nodeArr.length-1].start){ // >max
             pair.left = this.nodeArr[this.nodeArr.length-1];
             pair.right = null;
         } else {
-            for (var m = 0; m < this.nodeArr.length - 1; ++m) {
-                if(date == this.nodeArr[m].start ||
-                    date > this.nodeArr[m].start && date < this.nodeArr[m+1].start){
+            for (var m = 0; m < this.nodeArr.length; ++m) {
+                if(date == this.nodeArr[m].start){ // at node
+                    pair.current = this.nodeArr[m];
+                    if(m){
+                        pair.left = this.nodeArr[m-1];
+                    }
+                    if(m!=this.nodeArr.length-1){
+                        pair.right = this.nodeArr[m+1];
+                    }
+                    break;
+                } else if (date > this.nodeArr[m].start && date < this.nodeArr[m + 1].start) { // in range
                     pair.left = this.nodeArr[m];
-                    pair.right = this.nodeArr[m+1];
+                    pair.right = this.nodeArr[m + 1];
                     pair.index = m;
                     break;
                 }
@@ -385,6 +401,9 @@ var editorData = {
     interpolationInRange: function(date){
         var result = {};
         var pair = this.getKeyPoint(date);
+        if(pair.current){
+            return pair;
+        }
         // 在当前时间段内的占比
         var d = (date - pair.left.start) / (pair.right.start - pair.left.start);
         var start = this.indexArr[pair.index];
@@ -420,54 +439,13 @@ var editorData = {
             this.setSelect(this.nodeArr[this.nodeArr.length - 1].id);
         } else { // 在range之内
             var result = this.interpolationInRange(date);
-           /*
-            var timelong = this.nodeArr[this.nodeArr.length - 1].start - this.nodeArr[0].start;
-            var timenow = date - this.nodeArr[0].start;
-            var d = timenow / timelong;
-            // 位置
-            var pt = this.curve.getPoint(d);
-            // 角度
-            var rot = new THREE.Euler();
-            var pair = this.getKeyPoint(date);
-
-            var timelong = pair.right.start - pair.left.start;
-            var timenow = date - pair.left.start;
-            var d = timenow / timelong;
-
-            var rotlongx = pair.right.mesh.rotation.x - pair.left.mesh.rotation.x;
-            var rotlongy = pair.right.mesh.rotation.y - pair.left.mesh.rotation.y;
-            var rotlongz = pair.right.mesh.rotation.z - pair.left.mesh.rotation.z;
-
-            rot.set(pair.left.mesh.rotation.x + rotlongx * d,
-                    pair.left.mesh.rotation.y + rotlongy * d,
-                    pair.left.mesh.rotation.z + rotlongz * d,
-                    "XYZ"
-            );
-
-            if(arr.length == 1){ // 落在关键点上
-                rot.copy(arr[0].mesh.rotation);
-            } else if (arr.length == 2) { // 在两个关键点之间
-                var timelong = arr[1].start - arr[0].start;
-                var timenow = date - arr[0].start;
-                var d = timenow / timelong;
-
-                var rotlongx = arr[1].mesh.rotation.x - arr[0].mesh.rotation.x;
-                var rotlongy = arr[1].mesh.rotation.y - arr[0].mesh.rotation.y;
-                var rotlongz = arr[1].mesh.rotation.z - arr[0].mesh.rotation.z;
-
-                rot.set(arr[0].mesh.rotation.x + rotlongx * d,
-                        arr[0].mesh.rotation.y + rotlongy * d,
-                        arr[0].mesh.rotation.z + rotlongz * d,
-                        "XYZ"
-                );
-            } else { // 小于min或大于max
-                // 暂时什么多不做
+            if(result.current){
+                this.setSelect(result.current.id);
+            }else{
+                editor.updateViewCameraPosition(result.pos);
+                editor.updateViewCameraRotation(result.rot);
+                this.updateTargetMesh(result.pos, result.rot);
             }
-*/
-            //console.log(result.pos);
-            editor.updateViewCameraPosition(result.pos);
-            editor.updateViewCameraRotation(result.rot);
-            this.updateTargetMesh(result.pos, result.rot);
         }
     },
 
