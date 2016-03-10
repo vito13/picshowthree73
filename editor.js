@@ -10,7 +10,17 @@ var editor = {
     viewRenderer: null,
     transformControl: null,
 
+
+
     reset: function(){
+
+        if(this.containerMain && this.mainRenderer.domElement){
+            this.containerMain.removeChild( this.mainRenderer.domElement );
+        }
+        if(this.containerCam && this.viewRenderer.domElement){
+            this.containerCam.removeChild( this.viewRenderer.domElement );
+        }
+
         this.scene = new THREE.Scene();
 
         // editor渲染器
@@ -27,6 +37,9 @@ var editor = {
 
         // edit div
         this.containerMain = document.getElementById('mainview');
+        EventUtil.addHandler(this.containerMain, "dragenter", editorData.handleDrop);
+        EventUtil.addHandler(this.containerMain, "dragover", editorData.handleDrop);
+        EventUtil.addHandler(this.containerMain, "drop", editorData.handleDrop);
         this.containerMain.appendChild( this.mainRenderer.domElement );
         // 预览div
         this.containerCam = document.getElementById('camera');
@@ -193,7 +206,6 @@ var editor = {
         }
         if(this.viewRenderer) {
             this.viewRenderer.render(this.scene, this.viewCamera);
-            //console.log(this.viewCamera.rotation);
         }
     },
     updateViewCameraPosition: function(position){

@@ -15,7 +15,7 @@ var editorData = {
     ARC_SEGMENTS: 200, // 由n个点连接来描绘的曲线,但非曲线的控制点数量
     NODEINDEX: 0,
     nodeArr: null,
-    controlPointArr: null,
+    controlPointArr: null, // 用于编辑器操作的所有关键点容器
     curvePoints: null,
     curve: null,
     selTargetMesh: null,
@@ -28,60 +28,46 @@ var editorData = {
     templateSphere: null, // 对应于上面用的mesh
     indexArr: null, // 用于保存每次曲线更新后所有关键点的index
     defaultDir: 0, // 默认节点朝向(面对影视墙)
+    nodeJsonArr: [], // 用于保存脚本数据
 
-
-
-    addDefaultNode: function(){
-        var now = Date.now();
-        var step = 2000;
-        // 4个关键帧, 每个间隔2秒
+    resetNode: function(){
         var items = new vis.DataSet();
-        for (var m=0; m<4; ++m){
-            var item = {
-                id: m,
-                start: now + m * step
-            };
-            this.addNode(item);
-            items.add(item);
+        if(this.nodeJsonArr.length){
+            for (var m=0; m<this.nodeJsonArr.length; ++m){
+                var item = {
+                    id: this.nodeJsonArr[m].id,
+                    start: this.nodeJsonArr[m].start
+                };
+                var nodeData = {
+                    position: this.nodeJsonArr[m].position,
+                    rotation: this.nodeJsonArr[m].rotation,
+                    id: this.nodeJsonArr[m].id,
+                    start: this.nodeJsonArr[m].start
+                };
+                this.addNode(item, null, nodeData);
+                items.add(item);
+            }
+        }else{
+            var now = Date.now();
+            var step = 2000;
+            // 4个关键帧, 每个间隔2秒
+            var items = new vis.DataSet();
+            for (var m=0; m<4; ++m){
+                var item = {
+                    id: m,
+                    start: now + m * step
+                };
+                this.addNode(item);
+                items.add(item);
+            }
+            this.nodeArr[1].mesh.rotation.x = -0.5 * Math.PI;
+            this.nodeArr[2].mesh.rotation.x = 0.5 * Math.PI;
         }
-        this.nodeArr[1].mesh.rotation.x = -0.5 * Math.PI;
-        this.nodeArr[2].mesh.rotation.x = 0.5 * Math.PI;
+
         timeline.setItems(items);
     },
 
     resetData: function (){
-
-        //var ptarr = [
-        //    new THREE.Vector3(0, 0, 0),
-        //    new THREE.Vector3(200, 100, 0),
-        //    new THREE.Vector3(300, 0, 0),
-        //    new THREE.Vector3(500, 100, 0)
-        //];
-        //var curve = new THREE.CatmullRomCurve3(ptarr);
-        //var templateLine = new THREE.Geometry();
-        //for ( var i = 0; i < this.ARC_SEGMENTS; i ++ ) {
-        //    templateLine.vertices.push( new THREE.Vector3() );
-        //}
-        //curve.mesh = new THREE.Line(this.templateLine, new THREE.LineBasicMaterial( {
-        //    color: 0xff0000,
-        //    opacity: 0.35,
-        //    linewidth: 2
-        //}));
-        //var curveArr = curve.getPoints(this.ARC_SEGMENTS);
-        //var curveLenArr = curve.getLengths(this.ARC_SEGMENTS);
-        //var curveLenArr2 = curve.getLengths(4);
-
-
-
-        //this.ptArr = new Array();
-        //this.templateSphere = new THREE.SphereGeometry(2, 16, 8 );
-        //for(var m=0; m<this.ARC_SEGMENTS; ++m){
-        //    var pt = new THREE.Mesh(this.templateSphere.clone(), new THREE.MeshBasicMaterial({ color: 0xff0040, wireframe: true }));
-        //    this.ptArr.push(pt);
-        //    editor.scene.add(pt);
-        //}
-
-        // radiusAtTop, radiusAtBottom, height, segmentsAroundRadius, segmentsAlongHeight,
         this.templateCube = new THREE.CylinderGeometry( 0, 20, 50, 10, 4 );
         this.templateLine = new THREE.Geometry();
         for ( var i = 0; i < this.ARC_SEGMENTS; i ++ ) {
@@ -104,10 +90,9 @@ var editorData = {
         } ) );
         this.curve.mesh.castShadow = true;
         editor.scene.add(this.curve.mesh);
-        this.addDefaultNode();
+        this.resetNode();
         this.indexArr = new Array();
         this.updateSplineOutline();
-
 
         timeline.addCustomTime(this.nodeArr[0].start, this.timebarid);
     },
@@ -125,40 +110,61 @@ var editorData = {
             pt.scale.z = 1;
         }
     },
-    // 添加节点
-    addNode: function (item, callback) {
-        item.content = '' + this.NODEINDEX++;
-        // item.start = Date.now();
-        if("number" !== typeof item.start){
-            item.start = Date.parse(item.start);
-        }
 
+    createEmptyNode: function(item){
         var mesh = new THREE.Mesh(this.templateCube, new THREE.MeshLambertMaterial({
             color: Math.random() * 0xffffff, wireframe: false}));
         mesh.material.ambient = mesh.material.color;
-        mesh.position.x = Math.random() * 1000 - 500;
-        mesh.position.y = Math.random() * 600;
-        mesh.position.z = Math.random() * 800 - 400;
-
         mesh.castShadow = true;
         mesh.receiveShadow = true;
-        mesh.name = item.content;
+        mesh.name = item.id;
 
         var object = new Object();
-        object.index = item.content;
         object.id = item.id;
+        if("number" !== typeof item.start){
+            item.start = Date.parse(item.start);
+        }
         object.start = item.start;
         object.mesh = mesh;
-        this.nodeArr.push(object);
-        editor.scene.add(mesh);
-        this.controlPointArr.push(mesh);
+        return object;
+    },
 
-        this.curvePoints.push(mesh.position);
+    // 添加节点
+    /* 重要属性
+     mesh的name用于remove, name与时间轴上的id一致
+     时间轴item属性:
+     content:    时间轴上的节点内容
+     id:         唯一值,即key,双击生成的id为一个类似guid的字符串
+     start:      时间
+     自定义node属性:  貌似根上面的一部分一样啊...能合一起麽?待优化吧
+     mesh        模型
+     id          同时间轴
+     start       同时间轴
+     */
+    addNode: function (item, callback, nodeData) {
+        var node = this.createEmptyNode(item);
+        if(nodeData){
+            node.mesh.position.copy(nodeData.position);
+            node.mesh.rotation.copy(nodeData.rotation);
+            node.id = nodeData.id;
+            node.start = nodeData.start;
+        } else {
+            node.mesh.position.x = Math.random() * 1000 - 500;
+            node.mesh.position.y = Math.random() * 600;
+            node.mesh.position.z = Math.random() * 800 - 400;
+        }
+        item.content = "" + node.id;
+
+        this.nodeArr.push(node);
+        editor.scene.add(node.mesh);
+        this.controlPointArr.push(node.mesh);
+
+        this.curvePoints.push(node.mesh.position);
         this.resort();
         if(callback){
             callback(item);
         }
-        return object;
+        return node;
     },
 
     setSelect: function(id){
@@ -177,7 +183,8 @@ var editorData = {
                 return true;
             }
         }
-        return false;    },
+        return false;
+    },
 
     removeNode: function(item, callback){
         if(this.nodeArr.length > this.MINNODES){
@@ -185,7 +192,7 @@ var editorData = {
             if (node) {
                 if(this.removeCurvePoint(node.value.mesh.position)){
                     this.updateSplineOutline();
-                    var mesh = editor.scene.getChildByName(node.value.index);
+                    var mesh = editor.scene.getChildByName(node.value.id);
                     if(mesh){
                         editor.scene.remove(mesh);
                         this.nodeArr.splice(node.index, 1);
@@ -274,7 +281,7 @@ var editorData = {
     printNodeData: function(){
         console.log("===================");
         for(var m=0; m<this.nodeArr.length; ++m){
-            var s = "(" + m + ") index: " + this.nodeArr[m].index + ", id: " + this.nodeArr[m].id + ", start: " + this.nodeArr[m].start;
+            var s = "(" + m + ") id: " + this.nodeArr[m].id + ", start: " + this.nodeArr[m].start;
             console.log(s);
             var d = Date.parse(this.nodeArr[m].start);
             console.log(d);
@@ -471,19 +478,63 @@ var editorData = {
         return indexArr;
     },
 
+    // 保存为json
     save: function(){
-        for ( var i = 0; i < this.nodeArr.length; i ++ ) {
-
-            p = splineHelperObjects[ i ].position;
-            strplace.push( 'new THREE.Vector3({0}, {1}, {2})'.format( p.x, p.y, p.z ) )
+        var arr = new Array();
+        for(var m=0; m<this.nodeArr.length; ++m){
+            var obj = {};
+            //obj.index = this.nodeArr[m].index;
+            obj.id = this.nodeArr[m].id;
+            obj.start = this.nodeArr[m].start;
+            obj.position = this.nodeArr[m].mesh.position;
+            obj.rotation = this.nodeArr[m].mesh.rotation;
+            var jsonText = JSON.stringify(obj, null, 4);
+            arr.push(jsonText);
         }
-        console.log( strplace.join( ',\n' ) );
-        var code = '[' + ( strplace.join( ',\n\t' ) ) + ']';
-        prompt( 'copy and paste code', code );
+        var str = arr.join(",");
+        str = "[" + str + "]";
+        var blob = new Blob([str], {type: "text/plain;charset=utf-8"});
+        saveAs(blob, "hello world.txt");
     },
 
-    load: function(){
+    // 拖拽脚本
+    handleDrop: function(event){
+        var info = "", files, i, len;
+        EventUtil.preventDefault(event);
+        if (event.type == "drop"){
+            files = event.dataTransfer.files;
+            i = 0;
+            len = files.length;
 
+            while (i < len){
+                var reader = new FileReader();
+                reader.readAsText(files[i]);
+                reader.onerror = function(){
+                    console.log("Could not read file, error code is " + reader.error.code);
+                };
+
+                reader.onprogress = function(event){
+                    if (event.lengthComputable){
+                        console.log(event.loaded + "/" + event.total);
+                    }
+                };
+
+                reader.onload = function(){
+                    var str = reader.result;
+                    var jsonData = JSON.parse(str);
+                    editorData.load(jsonData);
+                };
+                break;
+            }
+        }
+    },
+
+    // 加载json数组
+    load: function(jsonArr){
+        this.nodeJsonArr = jsonArr;
+        timeline.removeCustomTime(this.timebarid);
+        editor.reset();
+        this.fouceFirst();
     }
 };
 
