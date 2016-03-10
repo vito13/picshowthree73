@@ -153,7 +153,7 @@ var editorData = {
             node.mesh.position.y = Math.random() * 600;
             node.mesh.position.z = Math.random() * 800 - 400;
         }
-        item.content = "" + node.id;
+        item.content = "";// + node.id;
 
         this.nodeArr.push(node);
         editor.scene.add(node.mesh);
@@ -494,7 +494,7 @@ var editorData = {
         var str = arr.join(",");
         str = "[" + str + "]";
         var blob = new Blob([str], {type: "text/plain;charset=utf-8"});
-        saveAs(blob, "hello world.txt");
+        saveAs(blob, "picshow.json");
     },
 
     // 拖拽脚本
